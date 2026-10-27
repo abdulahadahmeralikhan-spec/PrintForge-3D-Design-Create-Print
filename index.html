@@ -1,0 +1,705 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>STEAM Lab 3D Studio</title>
+
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f3f5fb;
+  color: #192440;
+}
+header {
+  background: linear-gradient(120deg,#17223b,#3157e8);
+  color: white;
+  padding: 25px 6%;
+}
+header h1 { margin: 0 0 8px; }
+nav {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 14px 6%;
+  background: white;
+}
+button {
+  border: 0;
+  border-radius: 9px;
+  padding: 11px 14px;
+  background: #3157e8;
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
+}
+button:hover { opacity: .85; }
+nav button { background: #e8ecff; color: #3157e8; }
+nav button.active { background: #3157e8; color: white; }
+main { max-width: 1150px; margin: 25px auto; padding: 0 16px; }
+.panel {
+  background: white;
+  padding: 20px;
+  border-radius: 15px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 18px #17223b0c;
+}
+h2 { margin-top: 0; }
+small,.muted { color: #66718a; }
+label { display:block; font-weight:bold; margin:13px 0 7px; }
+input,select,textarea {
+  width:100%; padding:11px; border:1px solid #d9deec;
+  border-radius:8px; font:inherit; background:white;
+}
+.toolbar { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+.workspace {
+  width:100%; height:420px; background:#101827;
+  border-radius:12px; overflow:hidden; position:relative;
+}
+#viewer { width:100%; height:100%; }
+#viewer canvas { display:block; width:100%; height:100%; }
+.badge {
+  display:inline-block; padding:5px 9px; border-radius:20px;
+  font-size:12px; background:#fff0ce; color:#795400;
+}
+.Approved { background:#d8f7e7; color:#116c43; }
+.Rejected { background:#ffe0e0; color:#a32121; }
+.Completed { background:#e4e8f1; color:#384765; }
+.card {
+  padding:15px; border:1px solid #e0e5f0;
+  border-radius:11px; margin-top:12px; overflow-wrap:anywhere;
+}
+.row { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.hidden { display:none !important; }
+.green { background:#16865b; }
+.red { background:#d94343; }
+.grey { background:#e8ecff; color:#3157e8; }
+#message { min-height:22px; color:#16865b; }
+@media(max-width:600px) {
+  .row { grid-template-columns:1fr; }
+  .workspace { height:330px; }
+}
+</style>
+
+<!-- Three.js and its official add-ons -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.185.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+
+<body>
+<header>
+  <h1>🖨️ STEAM Lab 3D Studio</h1>
+  <p>Design • Create • Export • Book • Print</p>
+</header>
+
+<nav>
+  <button id="designTab" class="active" onclick="page('design')">
+    🎨 3D Designer
+  </button>
+  <button id="bookingTab" onclick="page('booking')">
+    📦 Book a Print
+  </button>
+  <button id="managerTab" onclick="page('manager')">
+    🧑‍💻 Lab Manager
+  </button>
+</nav>
+
+<main>
+<section id="designPage">
+  <div class="panel">
+    <h2>🎨 Create Your 3D Model</h2>
+    <p class="muted">
+      Add shapes, change their size and color, and rotate the model.
+      Dimensions are measured in millimetres.
+    </p>
+
+    <label for="designName">Name your design</label>
+    <input id="designName" maxlength="80" value="My 3D Creation">
+
+    <div class="row">
+      <div>
+        <label for="shape">Choose a shape</label>
+        <select id="shape">
+          <option value="box">Cube / Rectangle</option>
+          <option value="sphere">Sphere</option>
+          <option value="cylinder">Cylinder</option>
+        </select>
+      </div>
+      <div>
+        <label for="color">Shape color</label>
+        <input id="color" type="color" value="#4263eb">
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="sx">Width (mm)</label>
+        <input id="sx" type="number" min="2" max="100"
+          value="20">
+      </div>
+      <div>
+        <label for="sy">Height (mm)</label>
+        <input id="sy" type="number" min="2" max="100"
+          value="20">
+      </div>
+    </div>
+
+    <label for="sz">Depth (mm)</label>
+    <input id="sz" type="number" min="2" max="100" value="20">
+
+    <div class="toolbar">
+      <button onclick="addShape()">＋ Add Shape</button>
+      <button class="grey" onclick="removeLast()">Undo Last Shape</button>
+      <button class="grey" onclick="clearModel()">Clear Model</button>
+      <button class="green" onclick="exportSTL()">⬇ Export STL</button>
+    </div>
+
+    <div class="workspace">
+      <div id="viewer"></div>
+    </div>
+
+    <p class="muted">
+      Drag to rotate. Scroll to zoom. Each new shape is placed beside
+      the previous one so you can build a model from multiple parts.
+    </p>
+    <p id="modelInfo">Shapes in model: 0</p>
+    <p id="message" role="status"></p>
+  </div>
+
+  <div class="panel">
+    <h2>📐 Model Parts</h2>
+    <div id="partsList">Your model is empty.</div>
+  </div>
+</section>
+
+<section id="bookingPage" class="hidden">
+  <div class="panel">
+    <h2>📦 Request a Print</h2>
+    <p class="muted">
+      First create your model in the 3D Designer, then export it.
+      Your exported STL file will be downloaded when you submit.
+    </p>
+
+    <form id="bookingForm">
+      <label for="student">Student name *</label>
+      <input id="student" required maxlength="70">
+
+      <label for="studentClass">Class *</label>
+      <input id="studentClass" required maxlength="30"
+        placeholder="Example: 5H">
+
+      <label for="bookingDesign">Design name *</label>
+      <input id="bookingDesign" required maxlength="80">
+
+      <label for="modelFile">STL or OBJ file *</label>
+      <input id="modelFile" type="file" accept=".stl,.obj" required>
+      <small>Select the STL you exported from the 3D Designer.</small>
+
+      <label for="printer">Preferred printer</label>
+      <select id="printer">
+        <option>Any available printer</option>
+        <option>Printer 1</option>
+        <option>Printer 2</option>
+        <option>Printer 3</option>
+      </select>
+
+      <label for="date">Preferred date *</label>
+      <input id="date" type="date" required>
+
+      <label for="time">Preferred time *</label>
+      <select id="time" required>
+        <option value="">Choose a time</option>
+        <option value="08:00">8:00 AM</option>
+        <option value="08:30">8:30 AM</option>
+        <option value="09:00">9:00 AM</option>
+        <option value="09:30">9:30 AM</option>
+        <option value="10:00">10:00 AM</option>
+        <option value="10:30">10:30 AM</option>
+        <option value="11:00">11:00 AM</option>
+        <option value="11:30">11:30 AM</option>
+        <option value="12:00">12:00 PM</option>
+        <option value="12:30">12:30 PM</option>
+        <option value="13:00">1:00 PM</option>
+        <option value="13:30">1:30 PM</option>
+        <option value="14:00">2:00 PM</option>
+        <option value="14:30">2:30 PM</option>
+      </select>
+
+      <label for="notes">Description</label>
+      <textarea id="notes" rows="3" maxlength="500"></textarea>
+
+      <button type="submit">Submit Booking Request</button>
+    </form>
+    <p id="bookingMessage" role="status"></p>
+  </div>
+
+  <div class="panel">
+    <h2>My Print Requests</h2>
+    <div id="myRequests"></div>
+  </div>
+</section>
+
+<section id="managerPage" class="hidden">
+  <div class="panel">
+    <h2>🧑‍💻 Lab Manager Dashboard</h2>
+    <p class="muted">
+      Review requests, estimate print duration, assign printers,
+      and manage the schedule.
+    </p>
+    <p><strong>Demo only:</strong> This manager page has no login protection.
+      Do not use it for real student information until secure accounts
+      and a shared server are added.</p>
+
+    <label for="filter">Filter by status</label>
+    <select id="filter" onchange="renderAll()">
+      <option>All</option>
+      <option>Pending</option>
+      <option>Approved</option>
+      <option>Rejected</option>
+      <option>Completed</option>
+    </select>
+  </div>
+
+  <div class="panel">
+    <h2>🗓️ Approved Print Schedule</h2>
+    <div id="schedule"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Requests to Manage</h2>
+    <div id="managerRequests"></div>
+    <button class="grey" onclick="exportBackup()">Export Booking Backup</button>
+    <button class="red" onclick="clearBookings()">Clear Demo Bookings</button>
+  </div>
+</section>
+</main>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { STLExporter } from "three/addons/exporters/STLExporter.js";
+
+const root = document.getElementById("viewer");
+const scene = new THREE.Scene();
+scene.background = new THREE.Color("#101827");
+
+const camera = new THREE.PerspectiveCamera(
+  45, root.clientWidth / root.clientHeight, 0.1, 2000
+);
+camera.position.set(100, 90, 120);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(root.clientWidth, root.clientHeight);
+root.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.target.set(0, 10, 0);
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x536078, 2));
+
+const light = new THREE.DirectionalLight(0xffffff, 2);
+light.position.set(60, 100, 80);
+scene.add(light);
+
+const grid = new THREE.GridHelper(200, 20, 0x52617e, 0x303b50);
+scene.add(grid);
+
+const model = new THREE.Group();
+scene.add(model);
+
+let partNumber = 0;
+let exporting = false;
+
+function setMessage(text) {
+  document.getElementById("message").textContent = text;
+}
+
+function makeGeometry(type, x, y, z) {
+  if (type === "box") return new THREE.BoxGeometry(x, y, z);
+  if (type === "sphere") {
+    return new THREE.SphereGeometry(Math.min(x, y, z) / 2, 32, 20);
+  }
+  return new THREE.CylinderGeometry(x / 2, x / 2, y, 32);
+}
+
+function addShape() {
+  const type = document.getElementById("shape").value;
+  const color = document.getElementById("color").value;
+  const x = Number(document.getElementById("sx").value);
+  const y = Number(document.getElementById("sy").value);
+  const z = Number(document.getElementById("sz").value);
+
+  if (![x, y, z].every(n => Number.isFinite(n) && n >= 2 && n <= 100)) {
+    setMessage("Enter dimensions between 2 and 100 mm.");
+    return;
+  }
+
+  const geometry = makeGeometry(type, x, y, z);
+  const material = new THREE.MeshStandardMaterial({
+    color, roughness: 0.55, metalness: 0.05
+  });
+
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.userData.partName = type;
+  mesh.userData.dimensions = { x, y, z };
+
+  // Place parts next to one another for a simple combined design.
+  mesh.position.x = partNumber === 0 ? 0 : partNumber * 15;
+  mesh.position.y = y / 2;
+  model.add(mesh);
+  partNumber++;
+
+  updateModel();
+  setMessage("Shape added! You can add more shapes.");
+}
+
+function removeLast() {
+  const mesh = model.children[model.children.length - 1];
+  if (!mesh) return;
+
+  model.remove(mesh);
+  mesh.geometry.dispose();
+  mesh.material.dispose();
+  partNumber = model.children.length;
+  updateModel();
+  setMessage("Last shape removed.");
+}
+
+function clearModel() {
+  while (model.children.length) {
+    const mesh = model.children[0];
+    model.remove(mesh);
+    mesh.geometry.dispose();
+    mesh.material.dispose();
+  }
+  partNumber = 0;
+  updateModel();
+  setMessage("Model cleared.");
+}
+
+function updateModel() {
+  document.getElementById("modelInfo").textContent =
+    "Shapes in model: " + model.children.length;
+
+  document.getElementById("partsList").innerHTML =
+    model.children.length
+      ? model.children.map((mesh, i) =>
+          `<p>${i + 1}. ${safe(mesh.userData.partName)} — ` +
+          `${mesh.userData.dimensions.x} × ` +
+          `${mesh.userData.dimensions.y} × ` +
+          `${mesh.userData.dimensions.z} mm</p>`
+        ).join("")
+      : "Your model is empty.";
+}
+
+function safe(value) {
+  return String(value).replace(/[&<>"']/g, c => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+  })[c]);
+}
+
+function exportSTL() {
+  if (!model.children.length) {
+    setMessage("Add at least one shape before exporting.");
+    return;
+  }
+  if (exporting) return;
+
+  exporting = true;
+  try {
+    const exporter = new STLExporter();
+    const data = exporter.parse(model, { binary: true });
+    const blob = new Blob([data], { type: "model/stl" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const name = document.getElementById("designName").value.trim()
+      || "my-3d-model";
+
+    link.href = url;
+    link.download = name.replace(/[^a-z0-9_-]/gi, "_") + ".stl";
+    link.click();
+
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    setMessage("STL downloaded! You can now request a print.");
+  } catch (error) {
+    console.error(error);
+    setMessage("Export failed. Please try again.");
+  } finally {
+    exporting = false;
+  }
+}
+
+window.addShape = addShape;
+window.removeLast = removeLast;
+window.clearModel = clearModel;
+window.exportSTL = exportSTL;
+
+function resize() {
+  const width = root.clientWidth;
+  const height = root.clientHeight;
+  if (!width || !height) return;
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+  renderer.setSize(width, height);
+}
+
+new ResizeObserver(resize).observe(root);
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+// Booking and manager features
+const KEY = "steamStudioBookings";
+let requests = [];
+
+try {
+  const saved = JSON.parse(localStorage.getItem(KEY) || "[]");
+  requests = Array.isArray(saved) ? saved : [];
+} catch {
+  requests = [];
+}
+
+function save() {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(requests));
+  } catch {
+    alert("Could not save the demo data in this browser.");
+  }
+}
+
+function minutes(time) {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function clock(value) {
+  const h = Math.floor(value / 60) % 24;
+  const m = value % 60;
+  return new Date(2000, 0, 1, h, m).toLocaleTimeString([], {
+    hour: "numeric", minute: "2-digit"
+  });
+}
+
+document.getElementById("date").min =
+  new Date().toLocaleDateString("en-CA");
+
+document.getElementById("bookingForm").addEventListener("submit", event => {
+  event.preventDefault();
+
+  const file = document.getElementById("modelFile").files[0];
+  const date = document.getElementById("date").value;
+
+  if (!file || !/\.(stl|obj)$/i.test(file.name)) {
+    alert("Choose an STL or OBJ file.");
+    return;
+  }
+
+  if (date < new Date().toLocaleDateString("en-CA")) {
+    alert("Choose today or a future date.");
+    return;
+  }
+
+  const item = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    student: document.getElementById("student").value.trim(),
+    studentClass: document.getElementById("studentClass").value.trim(),
+    design: document.getElementById("bookingDesign").value.trim(),
+    fileName: file.name,
+    printer: document.getElementById("printer").value,
+    date,
+    time: document.getElementById("time").value,
+    notes: document.getElementById("notes").value.trim(),
+    status: "Pending",
+    duration: 30,
+    managerNote: ""
+  };
+
+  if (!item.student || !item.studentClass || !item.design ||
+      !item.time) {
+    alert("Please fill in all required fields.");
+    return;
+  }
+
+  requests.push(item);
+  save();
+  document.getElementById("bookingMessage").textContent =
+    "Request submitted. The lab manager can now review it.";
+
+  event.target.reset();
+  renderAll();
+});
+
+function overlaps(item, duration, printer) {
+  const start = minutes(item.time);
+  const end = start + duration;
+
+  return requests.some(other => {
+    if (other.id === item.id || other.status !== "Approved") return false;
+    if (other.date !== item.date) return false;
+
+    const sharedPrinter = printer === other.printer ||
+      printer === "Any available printer" ||
+      other.printer === "Any available printer";
+
+    if (!sharedPrinter) return false;
+
+    const otherStart = minutes(other.time);
+    const otherEnd = otherStart + Number(other.duration);
+
+    return start < otherEnd && otherStart < end;
+  });
+}
+
+function manage(id, action) {
+  const item = requests.find(r => r.id === id);
+  if (!item) return;
+
+  if (action === "approve") {
+    const duration = Number(document.getElementById("dur-" + id).value);
+    const printer = document.getElementById("pr-" + id).value;
+    const note = document.getElementById("note-" + id).value.trim();
+
+    if (!Number.isFinite(duration) || duration < 5 || duration > 1440) {
+      alert("Print duration must be between 5 and 1440 minutes.");
+      return;
+    }
+
+    if (overlaps(item, duration, printer)) {
+      alert("This booking overlaps another booking. Change the printer or time.");
+      return;
+    }
+
+    item.duration = duration;
+    item.printer = printer;
+    item.managerNote = note;
+    item.status = "Approved";
+  } else if (action === "reject") {
+    item.managerNote = document.getElementById("note-" + id).value.trim();
+    item.status = "Rejected";
+  } else if (action === "complete" && item.status === "Approved") {
+    item.status = "Completed";
+  } else if (action === "reopen" && item.status === "Rejected") {
+    item.status = "Pending";
+  }
+
+  save();
+  renderAll();
+}
+
+window.manage = manage;
+
+function renderAll() {
+  const mine = document.getElementById("myRequests");
+  mine.innerHTML = requests.length ? [...requests].reverse().map(r => `
+    <div class="card">
+      <strong>${safe(r.design)}</strong>
+      <p>${safe(r.date)} • ${safe(clock(minutes(r.time)))}</p>
+      <p>File: ${safe(r.fileName)}</p>
+      <span class="badge ${r.status}">${safe(r.status)}</span>
+      ${["Approved","Completed"].includes(r.status) ?
+        `<p>${safe(r.printer)} • ${safe(r.duration)} minutes</p>` : ""}
+      ${r.managerNote ? `<p>Manager note: ${safe(r.managerNote)}</p>` : ""}
+    </div>
+  `).join("") : "<p>No print requests yet.</p>";
+
+  const approved = requests.filter(r => r.status === "Approved")
+    .sort((a, b) => a.date.localeCompare(b.date) ||
+      a.time.localeCompare(b.time));
+
+  document.getElementById("schedule").innerHTML = approved.length
+    ? approved.map(r => `
+      <div class="card">
+        <strong>${safe(r.design)}</strong>
+        <p>${safe(r.date)} • ${safe(clock(minutes(r.time)))} – 
+        ${safe(clock(minutes(r.time) + Number(r.duration)))}</p>
+        <p>${safe(r.printer)} • ${safe(r.student)}</p>
+      </div>
+    `).join("")
+    : "<p>No approved bookings.</p>";
+
+  const filter = document.getElementById("filter").value;
+  const shown = requests.filter(r => filter === "All" || r.status === filter);
+
+  document.getElementById("managerRequests").innerHTML = shown.length
+    ? shown.map(r => `
+      <div class="card">
+        <strong>${safe(r.design)}</strong>
+        <p>Student: ${safe(r.student)} • Class: ${safe(r.studentClass)}</p>
+        <p>File: ${safe(r.fileName)}</p>
+        <p>Requested: ${safe(r.date)} at ${safe(clock(minutes(r.time)))}</p>
+        <p>Preferred printer: ${safe(r.printer)}</p>
+        <p>${safe(r.notes || "No description")}</p>
+        <span class="badge ${r.status}">${safe(r.status)}</span>
+        ${r.status === "Pending" ? `
+          <label>Estimated time (minutes)</label>
+          <input id="dur-${r.id}" type="number" min="5" max="1440" value="30">
+          <label>Assign printer</label>
+          <select id="pr-${r.id}">
+            <option>Printer 1</option>
+            <option>Printer 2</option>
+            <option>Printer 3</option>
+          </select>
+          <label>Manager note</label>
+          <textarea id="note-${r.id}" rows="2"></textarea>
+          <div class="toolbar">
+            <button class="green" onclick="manage('${r.id}','approve')">Approve</button>
+            <button class="red" onclick="manage('${r.id}','reject')">Reject</button>
+          </div>
+        ` : r.status === "Approved" ? `
+          <button class="green" onclick="manage('${r.id}','complete')">Mark Completed</button>
+        ` : r.status === "Rejected" ? `
+          <button class="grey" onclick="manage('${r.id}','reopen')">Reopen</button>
+        ` : ""}
+      </div>
+    `).join("")
+    : "<p>No requests to display.</p>";
+}
+
+window.renderAll = renderAll;
+
+window.exportBackup = function() {
+  const blob = new Blob([JSON.stringify(requests, null, 2)], {
+    type: "application/json"
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "steam-bookings.json";
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+};
+
+window.clearBookings = function() {
+  if (!confirm("Clear all demo bookings?")) return;
+  requests = [];
+  save();
+  renderAll();
+};
+
+window.page = function(name) {
+  for (const key of ["design","booking","manager"]) {
+    document.getElementById(key + "Page").classList.toggle("hidden", key !== name);
+    document.getElementById(key + "Tab").classList.toggle("active", key === name);
+  }
+  renderAll();
+};
+
+renderAll();
+</script>
+</body>
+</html>
